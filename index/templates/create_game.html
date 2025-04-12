@@ -1,17 +1,34 @@
 {% extends 'base.html' %}
-
 {% load static %}
 {% load widget_tweaks %}
+
 {% block title %}
-    Creat new Games
+    Create New Game
 {% endblock %}
 
 {% block content %}
-    <h2>Creat new Games</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Creat Games</button>
-    </form>
-    <a href="{% url 'find_games' %}" class="btn btn-secondary mt-3">Find Games</a>
+    <div class="container mt-5 d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+        <div class="card p-4 shadow-sm" style="max-width: 500px; width: 100%;">
+            <h3 class="text-center mb-4">Create New Game</h3>
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    {{ form.name.label_tag }}
+                    {{ form.name|add_class:"form-control" }}
+                    {% if form.name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.name.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2">Create Game</button>
+            </form>
+
+            <div class="text-center mt-3">
+                <a href="{% url 'find_games' %}" class="btn btn-secondary w-100 py-2">Find Games</a>
+            </div>
+        </div>
+    </div>
 {% endblock %}

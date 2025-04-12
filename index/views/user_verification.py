@@ -18,17 +18,15 @@ def register(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.is_active = False
-            user.save()
-            return redirect('index')
+            user = form.save()
+            login(request, user)
+            return redirect('find_games')
     else:
         form = UserRegisterForm()
 
     return render(request, 'register.html', {'form': form})
 
 
-@csrf_exempt
 def user_login(request):
     if request.method == 'POST':
         form = UserLoginForm(request, data=request.POST)
@@ -38,7 +36,7 @@ def user_login(request):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
-                return redirect('index')
+                return redirect('find_games')
             else:
                 form.add_error(None, "Invalid username or password")
     else:

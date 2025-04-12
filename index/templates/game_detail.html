@@ -1,49 +1,45 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>游戏详情 - {{ game.name }}</title>
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
-</head>
-<body>
-  <div class="container mt-5">
-    <h2>游戏详情: {{ game.name }}</h2>
-    <p><strong>游戏ID:</strong> {{ game.id }}</p>
-    <p><strong>当前回合:</strong> {{ game.current_round }}</p>
-    <p><strong>创建时间:</strong> {{ game.created|date:"Y年m月d日 H:i" }}</p>
-    <p><strong>游戏状态:</strong> {% if game.finished %}已结束{% else %}进行中{% endif %}</p>
+{% extends 'base.html' %}
+{% load static %}
 
-    <h3 class="mt-4">玩家与其创建的国家</h3>
-    {% if countries %}
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>国家名称</th>
-            <th>所属用户</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for country in countries %}
-            <tr>
-              <td>{{ country.name }}</td>
-              <td>{{ country.user.username }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p>当前还没有玩家加入此游戏。</p>
-    {% endif %}
+{% block title %}
+    Game Detail - {{ game.name }}
+{% endblock %}
 
-    {% if game.can_join and not game.finished %}
-      <a href="{% url 'find_games' %}" class="btn btn-secondary mt-3">加入更多游戏</a>
-    {% endif %}
+{% block content %}
+    <div class="container mt-5">
+        <div class="card p-4 shadow-sm">
+            <h3 class="mb-4">Game Detail: {{ game.name }}</h3>
+            <p><strong>Game ID:</strong> {{ game.id }}</p>
+            <p><strong>Current Round:</strong> {{ game.current_round }}</p>
+            <p><strong>Created At:</strong> {{ game.created|date:"Y-m-d H:i" }}</p>
+            <p><strong>Status:</strong> {% if game.finished %}Finished{% else %}In Progress{% endif %}</p>
 
-    <!-- 游戏开始按钮 -->
-    <form action="{% url 'start_game' game_id=game.id %}" method="post" class="mt-3">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-danger">开始游戏</button>
-    </form>
-  </div>
-</body>
-</html>
+            <h4 class="mt-4">Players and Their Countries</h4>
+            {% if countries %}
+                <table class="table table-bordered">
+                    <thead>
+                    <tr>
+                        <th>Country Name</th>
+                        <th>Owned By</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for country in countries %}
+                        <tr>
+                            <td>{{ country.name }}</td>
+                            <td>{{ country.user.username }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No players have joined this game yet.</p>
+            {% endif %}
+
+            <form action="{% url 'start_game' game_id=game.id %}" method="post" class="mt-3">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger w-100">Start Game</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

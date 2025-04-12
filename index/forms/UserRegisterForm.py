@@ -15,9 +15,8 @@ class UserRegisterForm(UserCreationForm):
         }
 
     def __init__(self, *args, **kwargs):
-        super(UserRegisterForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
-            field.widget.attrs['class'] = field.widget.attrs.get('class', '') + ' form-control'
-
-            if self.errors.get(field_name):
-                field.widget.attrs['class'] += ' is-invalid'
+            field.widget.attrs.update({
+                'class': 'form-control' + (' is-invalid' if self.errors.get(field_name) else '')
+            })
