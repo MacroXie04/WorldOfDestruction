@@ -16,6 +16,8 @@ class Game(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     # Game ends when any country's land reaches 0
     finished = models.BooleanField(default=False)
+    can_join = models.BooleanField(default=True)
+    name = models.CharField(max_length=100, default="World of Destruction")
 
     def __str__(self):
         return f"Game #{self.id} - Round {self.current_round}"
@@ -52,6 +54,7 @@ class Tools(models.Model):
     price = models.IntegerField()
     population_increase = models.IntegerField()
     land_increase = models.IntegerField()
+    population_growth_rate = models.FloatField(default=10.0)
 
     def __str__(self):
         return f"{self.name} - Price: {self.price} - Population Damage: {self.population_increase} - Land Damage: {self.land_increase}"

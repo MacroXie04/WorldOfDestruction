@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% load static %}
+{% load widget_tweaks %}
+{% block title %}
+    Creat new Games
+{% endblock %}
+
+{% block content %}
+    <h2>Creat new Games</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Creat Games</button>
+    </form>
+    <a href="{% url 'find_games' %}" class="btn btn-secondary mt-3">Find Games</a>
+{% endblock %}

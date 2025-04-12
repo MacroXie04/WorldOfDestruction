@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>游戏详情 - {{ game.name }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>游戏详情: {{ game.name }}</h2>
+    <p><strong>游戏ID:</strong> {{ game.id }}</p>
+    <p><strong>当前回合:</strong> {{ game.current_round }}</p>
+    <p><strong>创建时间:</strong> {{ game.created }}</p>
+    <p><strong>游戏状态:</strong> {% if game.finished %}已结束{% else %}进行中{% endif %}</p>
+
+    <h3 class="mt-4">玩家与其创建的国家</h3>
+    {% if countries %}
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>国家名称</th>
+                <th>所属用户</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for country in countries %}
+                <tr>
+                    <td>{{ country.name }}</td>
+                    <td>{{ country.user.username }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>当前还没有玩家加入此游戏。</p>
+    {% endif %}
+
+    <!-- 如果游戏处于允许加入状态，提供进入查找游戏页面的链接 -->
+    {% if game.can_join and not game.finished %}
+        <a href="{% url 'find_games' %}" class="btn btn-secondary mt-3">加入更多游戏</a>
+    {% endif %}
+
+    <!-- 游戏开始按钮 -->
+    <form action="{% url 'start_game' game_id=game.id %}" method="post" class="mt-3">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">开始游戏</button>
+    </form>
+</div>
+</body>
+</html>
