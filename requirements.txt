@@ -2,3 +2,4 @@ django
 spotipy
 pygame
 yt-dlp
+django-widget-tweaks
