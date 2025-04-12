@@ -1,8 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from index.forms.CountryForm import CountryForm
-from index.forms.CreateGameForm import CreateGameForm
+from django.shortcuts import get_object_or_404
+
 from index.models import *
 
 
@@ -17,7 +16,13 @@ def api_game_status(request, game_id):
     countries = list(game.countries.all().order_by('created'))
     active_country = get_active_country(game)
 
+    if game.finished:
+        game_status = 'finished'
+    else:
+        game_status = 'active'
+
     game_data = {
+        'game_status': game_status,
         'game_name': game.name,
         'current_round': game.current_round,
         'active_country': {'id': active_country.id, 'name': active_country.name} if active_country else None,
@@ -111,34 +116,49 @@ def purchase_item(request, game_id):
         round_number=game.current_round
     )
 
-    # 检查是否已达到购买上限
+    # check the purchase limit
     used_count = turn.used_tools.count() + turn.used_weapons.count()
     if used_count >= game.max_actions_per_turn:
         return JsonResponse({'error': 'Purchase limit reached'}, status=400)
 
-    # TODO: 检查是否有足够的资金和扣除资金
-    # 处理武器购买
+    # process weapon purchase
     if item_type == 'weapon':
         try:
             weapon = Weapon.objects.get(pk=item_id)
         except Weapon.DoesNotExist:
             return JsonResponse({'error': 'Weapon not found.'}, status=404)
 
-        # 记录购买：加入 turn 和 库存
+        # check the user's money
+        if my_country.money < weapon.price:
+            return JsonResponse({'error': 'Not enough money.'}, status=403)
+
+        # deduct the money
+        my_country.money -= weapon.price
+        my_country.save()
+
+        # add the weapon to the turn and country inventory
         turn.used_weapons.add(weapon)
         my_country.weapons_inventory.add(weapon)
-        return JsonResponse({'message': f'武器 {weapon.name} 购买成功，已加入库存。'})
+        return JsonResponse({'message': f'Weapon {weapon.name} is purchased successfully.'})
 
-    # 处理道具购买
+    # process tool purchase
     elif item_type == 'tool':
         try:
             tool = Tools.objects.get(pk=item_id)
         except Tools.DoesNotExist:
             return JsonResponse({'error': 'Tool not found.'}, status=404)
 
+        # check the user's money
+        if my_country.money < tool.price:
+            return JsonResponse({'error': 'Not enough money.'}, status=403)
+
+        # deduct the money
+        my_country.money -= tool.price
+        my_country.save()
+
         turn.used_tools.add(tool)
         my_country.tools_inventory.add(tool)
-        return JsonResponse({'message': f'道具 {tool.name} 购买成功，已加入库存。'})
+        return JsonResponse({'message': f'Tool {tool.name} is purchased successfully.'})
 
     else:
         return JsonResponse({'error': 'Invalid item type.'}, status=400)
@@ -165,7 +185,7 @@ def use_item(request, game_id):
     if not item_type or not item_id:
         return JsonResponse({'error': 'Missing parameters.'}, status=400)
 
-    # 获取或创建当前回合的 Turn 记录
+    # get or create current turn
     turn, created = Turn.objects.get_or_create(game=game, country=my_country, round_number=game.current_round)
 
     if item_type == 'weapon':
@@ -225,13 +245,14 @@ def use_item(request, game_id):
         ActionLog.objects.create(
             game=game,
             country=my_country,
-            action=f"使用道具 {tool.name} 强化国家（增加人口 {tool.population_increase}，增加土地 {tool.land_increase}）。"
+            action=f"{my_country.name} 使用道具 {tool.name} 强化国家（增加人口 {tool.population_increase}，增加土地 {tool.land_increase}）。"
         )
 
         return JsonResponse({'message': f'Tool {tool.name} used. Your country has been reinforced.'})
 
     else:
         return JsonResponse({'error': 'Invalid item type.'}, status=400)
+
 
 @login_required(login_url='/login/')
 def end_turn(request, game_id):
