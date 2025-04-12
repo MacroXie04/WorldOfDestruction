@@ -6,17 +6,25 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
     <style>
         /* Container adjustments */
-        .container-fluid { padding: 20px; }
+        .container-fluid {
+            padding: 20px;
+        }
+
         /* Divide the screen into two halves with full viewport height and scroll if needed */
         .left-half, .right-half {
             height: 100vh;
             overflow-y: auto;
         }
+
         .left-half {
             border-right: 1px solid #ccc;
         }
+
         /* Section spacing */
-        .section { margin-bottom: 20px; }
+        .section {
+            margin-bottom: 20px;
+        }
+
         /* Map container and styling for 2D map visualization */
         #map-container {
             border: 1px solid #ccc;
@@ -25,14 +33,26 @@
             background-color: #f8f9fa;
             margin-bottom: 20px;
         }
-        #map-container h4 { margin-bottom: 15px; }
-        .country-map { margin-bottom: 10px; }
-        .country-name { font-weight: bold; margin-bottom: 5px; }
+
+        #map-container h4 {
+            margin-bottom: 15px;
+        }
+
+        .country-map {
+            margin-bottom: 10px;
+        }
+
+        .country-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
         .land-bar {
             height: 20px;
             background-color: #007bff;
             border-radius: 3px;
         }
+
         /* Tables */
         table th, table td {
             text-align: center;
@@ -57,32 +77,32 @@
                 <h4>Other Country Information</h4>
                 <table class="table table-bordered">
                     <thead>
-                        <tr>
-                            <th>Country Name</th>
-                            <th>Money</th>
-                            <th>Population</th>
-                            <th>Growth Rate</th>
-                            <th>Land</th>
-                        </tr>
+                    <tr>
+                        <th>Country Name</th>
+                        <th>Money</th>
+                        <th>Population</th>
+                        <th>Growth Rate</th>
+                        <th>Land</th>
+                    </tr>
                     </thead>
                     <tbody id="other-countries">
-                        <!-- Rows updated dynamically -->
+                    <!-- Rows updated dynamically -->
                     </tbody>
                 </table>
                 <hr>
                 <h4>My Country</h4>
                 <table class="table table-bordered">
                     <thead>
-                        <tr>
-                            <th>Country Name</th>
-                            <th>Money</th>
-                            <th>Population</th>
-                            <th>Growth Rate</th>
-                            <th>Land</th>
-                        </tr>
+                    <tr>
+                        <th>Country Name</th>
+                        <th>Money</th>
+                        <th>Population</th>
+                        <th>Growth Rate</th>
+                        <th>Land</th>
+                    </tr>
                     </thead>
                     <tbody id="my-country-info">
-                        <!-- Rows updated dynamically -->
+                    <!-- Rows updated dynamically -->
                     </tbody>
                 </table>
             </div>
@@ -127,7 +147,9 @@
                                     Price: {{ weapon.price }}<br>
                                     Population Damage: {{ weapon.population_damage }}<br>
                                     Land Damage: {{ weapon.land_damage }}<br>
-                                    <button class="btn btn-sm btn-primary purchase-weapon mt-2" data-weapon-id="{{ weapon.id }}">Purchase</button>
+                                    <button class="btn btn-sm btn-primary purchase-weapon mt-2"
+                                            data-weapon-id="{{ weapon.id }}">Purchase
+                                    </button>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -141,7 +163,9 @@
                                     Price: {{ tool.price }}<br>
                                     Population Increase: {{ tool.population_increase }}<br>
                                     Land Increase: {{ tool.land_increase }}<br>
-                                    <button class="btn btn-sm btn-primary purchase-tool mt-2" data-tool-id="{{ tool.id }}">Purchase</button>
+                                    <button class="btn btn-sm btn-primary purchase-tool mt-2"
+                                            data-tool-id="{{ tool.id }}">Purchase
+                                    </button>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -149,59 +173,73 @@
                 </div>
             </div>
             <hr>
-            <!-- Inventory Section -->
+            <!-- Inventory Section (Updated to load dynamically from API) -->
             <div id="inventory-section" class="section">
                 <h4>Inventory</h4>
                 <div class="row">
+                    <!-- Weapons Inventory -->
                     <div class="col-md-6">
                         <h5>Weapons</h5>
                         <ul class="list-group" id="inventory-weapons">
-                            {% for weapon in my_country.weapons_inventory.all %}
-                                <li class="list-group-item">
-                                    <strong>{{ weapon.name }}</strong><br>
-                                    <label class="mt-2">Select Target Country:
-                                        <select class="form-control target-country-use mt-1" data-weapon-id="{{ weapon.id }}">
-                                            {% for country in countries %}
-                                                {% if country.id != my_country.id %}
-                                                    <option value="{{ country.id }}">{{ country.name }}</option>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </select>
-                                    </label>
-                                    <button class="btn btn-sm btn-success mt-2 use-weapon" data-weapon-id="{{ weapon.id }}">Use</button>
-                                </li>
-                            {% endfor %}
+                            <!-- Dynamically loaded inventory from API -->
                         </ul>
                     </div>
+                    <!-- Tools Inventory -->
                     <div class="col-md-6">
                         <h5>Tools</h5>
                         <ul class="list-group" id="inventory-tools">
-                            {% for tool in my_country.tools_inventory.all %}
-                                <li class="list-group-item">
-                                    <strong>{{ tool.name }}</strong>
-                                    <button class="btn btn-sm btn-success mt-2 use-tool" data-tool-id="{{ tool.id }}">Use</button>
-                                </li>
-                            {% endfor %}
+                            <!-- Dynamically loaded inventory from API -->
                         </ul>
                     </div>
                 </div>
             </div>
-        </div><!-- End of Right Half -->
+        </div>
+    </div><!-- End of Right Half -->
+</div>
+
+<!-- Bootstrap Modal for Popup Messages -->
+<div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-labelledby="messageModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="messageModalLabel">Notification</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="popupMessage">
+                <!-- Message will be injected here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">OK</button>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- jQuery and AJAX -->
+<!-- jQuery, Popper.js, and Bootstrap JS -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
 <script>
     // Global variables
     var myCountryId = {{ my_country.id }};
     var pollInterval = null;
     var lastAlerted = "";
+    var gameCountries = []; // Global storage for countries from game status API
+
+    // Function to show a popup modal with a message
+    function showPopup(message) {
+        $("#popupMessage").text(message);
+        $("#messageModal").modal('show');
+    }
 
     // Update the dynamic 2D map based on each country's land value
     function updateMap(countries) {
         var maxLand = 0;
-        countries.forEach(function(country) {
+        countries.forEach(function (country) {
             if (country.land > maxLand) {
                 maxLand = country.land;
             }
@@ -210,7 +248,7 @@
         if (maxLand === 0) {
             mapHTML = "<div>No land data available.</div>";
         } else {
-            countries.forEach(function(country) {
+            countries.forEach(function (country) {
                 var barWidth = (country.land / maxLand) * 100;
                 mapHTML += "<div class='country-map'>";
                 mapHTML += "<div class='country-name'>" + country.name + "</div>";
@@ -225,14 +263,14 @@
     function updateCountryInfo(countries) {
         var otherHTML = "";
         var myHTML = "";
-        countries.forEach(function(country) {
+        countries.forEach(function (country) {
             var row = "<tr>" +
-                          "<td>" + country.name + "</td>" +
-                          "<td>" + country.money + "</td>" +
-                          "<td>" + country.population + "</td>" +
-                          "<td>" + country.population_growth_rate + "</td>" +
-                          "<td>" + country.land + "</td>" +
-                      "</tr>";
+                "<td>" + country.name + "</td>" +
+                "<td>" + country.money + "</td>" +
+                "<td>" + country.population + "</td>" +
+                "<td>" + country.population_growth_rate + "</td>" +
+                "<td>" + country.land + "</td>" +
+                "</tr>";
             if (country.is_mine) {
                 myHTML += row;
             } else {
@@ -247,11 +285,11 @@
     function updateActionLog(actions) {
         var logHtml = "";
         if (actions && actions.length > 0) {
-            actions.forEach(function(log) {
+            actions.forEach(function (log) {
                 logHtml += "<li class='list-group-item'>" + log.timestamp + " - " + log.action + "</li>";
                 if (log.action.indexOf("attack") !== -1 && log.action.indexOf("{{ my_country.name|escapejs }}") !== -1) {
                     if (lastAlerted !== log.timestamp) {
-                        alert("You are under attack: " + log.action);
+                        {#showPopup("You are under attack: " + log.action);#}
                         lastAlerted = log.timestamp;
                     }
                 }
@@ -262,6 +300,61 @@
         $("#action-log").html(logHtml);
     }
 
+    // Update user inventory using the api_user_inventory endpoint
+    function updateInventory() {
+        $.getJSON("{% url 'api_user_inventory' game.id %}", function (data) {
+            var weaponsHtml = "";
+            // 直接遍历 data.weapons，each entry 代表一份物品
+            data.weapons.forEach(function (weapon) {
+                weaponsHtml += "<li class='list-group-item'>";
+                weaponsHtml += "<strong>" + weapon.name + "</strong>";
+                // 添加目标国家选择功能，下拉框第一项为默认提示
+                weaponsHtml += "<br><label class='mt-2'>Select Target Country:";
+                var targetOptions = "<option value='' disabled selected>Select Target Country</option>";
+                if (gameCountries.length > 0) {
+                    gameCountries.forEach(function (country) {
+                        if (country.id !== myCountryId) {
+                            targetOptions += "<option value='" + country.id + "'>" + country.name + "</option>";
+                        }
+                    });
+                }
+                weaponsHtml += "<select class='form-control target-country-use mt-1' data-weapon-id='" + weapon.id + "'>" + targetOptions + "</select></label>";
+                weaponsHtml += "<button class='btn btn-sm btn-success use-weapon mt-2' data-weapon-id='" + weapon.id + "'>Use One</button>";
+                weaponsHtml += "</li>";
+            });
+            $("#inventory-weapons").html(weaponsHtml);
+
+            var toolsHtml = "";
+            data.tools.forEach(function (tool) {
+                toolsHtml += "<li class='list-group-item'>";
+                toolsHtml += "<strong>" + tool.name + "</strong>";
+                toolsHtml += "<br><button class='btn btn-sm btn-success use-tool mt-2' data-tool-id='" + tool.id + "'>Use One</button>";
+                toolsHtml += "</li>";
+            });
+            $("#inventory-tools").html(toolsHtml);
+        });
+    }
+
+    // 使用武器时，验证是否选择了目标国家
+    $(document).on("click", ".use-weapon", function () {
+        var weaponId = $(this).data("weapon-id");
+        // 查找同级 label 内的 select 元素的值
+        var targetCountry = $(this).siblings("label").find("select").val();
+        if (!targetCountry) {
+            showPopup("Please select a target country before using the weapon.");
+            return;
+        }
+        $.post("{% url 'use_item' game.id %}", {
+            item_type: 'weapon',
+            item_id: weaponId,
+            target_country: targetCountry,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function (data) {
+            showPopup(data.message);
+            updateGameStatus();
+        });
+    });
+
     // Update game state and refresh all dynamic sections
     function updateGameStatus() {
         $.getJSON("{% url 'api_game_status' game.id %}", function (data) {
@@ -271,6 +364,7 @@
             updateActionLog(data.last_actions);
             updateMap(data.countries);
             updateCountryInfo(data.countries);
+            gameCountries = data.countries; // update global countries
 
             if (data.active_country.id === myCountryId) {
                 $("#my-turn-status").text("Your turn ✅").removeClass().addClass("badge badge-success ml-3");
@@ -289,40 +383,39 @@
 
     // Initial update and polling every second
     updateGameStatus();
+    updateInventory()
     if (!pollInterval) {
         pollInterval = setInterval(updateGameStatus, 1000);
     }
 
     // Purchase Weapon (no target selection required)
-    $(".purchase-weapon").click(function () {
+    $(document).on("click", ".purchase-weapon", function () {
         var weaponId = $(this).data("weapon-id");
         $.post("{% url 'purchase_item' game.id %}", {
             item_type: 'weapon',
             item_id: weaponId,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
-            alert(data.message);
-            updateGameStatus();
-            location.reload();
+            showPopup(data.message);
+            updateInventory()
         });
     });
 
     // Purchase Tool
-    $(".purchase-tool").click(function () {
+    $(document).on("click", ".purchase-tool", function () {
         var toolId = $(this).data("tool-id");
         $.post("{% url 'purchase_item' game.id %}", {
             item_type: 'tool',
             item_id: toolId,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
-            alert(data.message);
-            updateGameStatus();
-            location.reload();
+            showPopup(data.message);
+            updateInventory()
         });
     });
 
     // Use Weapon (with target country selection)
-    $(".use-weapon").click(function () {
+    $(document).on("click", ".use-weapon", function () {
         var weaponId = $(this).data("weapon-id");
         var targetCountry = $(this).siblings("label").find("select").val();
         $.post("{% url 'use_item' game.id %}", {
@@ -331,34 +424,31 @@
             target_country: targetCountry,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
-            alert(data.message);
+            showPopup(data.message);
             updateGameStatus();
-            location.reload();
         });
     });
 
     // Use Tool (no target needed)
-    $(".use-tool").click(function () {
+    $(document).on("click", ".use-tool", function () {
         var toolId = $(this).data("tool-id");
         $.post("{% url 'use_item' game.id %}", {
             item_type: 'tool',
             item_id: toolId,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
-            alert(data.message);
+            showPopup(data.message);
             updateGameStatus();
-            location.reload();
         });
     });
 
     // End Turn
-    $("#end-turn").click(function () {
+    $(document).on("click", "#end-turn", function () {
         $.post("{% url 'end_turn' game.id %}", {
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
-            alert(data.message);
+            showPopup(data.message);
             updateGameStatus();
-            location.reload();
         });
     });
 </script>

@@ -23,4 +23,5 @@ urlpatterns = [
     path('api/purchase_item/<int:game_id>/', purchase_item, name='purchase_item'),
     path('api/use_item/<int:game_id>/', use_item, name='use_item'),
     path('api/end_turn/<int:game_id>/', end_turn, name='end_turn'),
+    path('api/user_inventory/<int:game_id>/', api_user_inventory, name='api_user_inventory'),
 ]
