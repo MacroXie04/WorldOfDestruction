@@ -1,235 +1,299 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ game.name }} - 游戏房间</title>
+    <title>{{ game.name }} - Game Room</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
     <style>
-        /* 自定义样式 */
-        .margin-top { margin-top: 20px; }
+        /* Container adjustments */
+        .container-fluid { padding: 20px; }
+        /* Divide the screen into two halves with full viewport height and scroll if needed */
+        .left-half, .right-half {
+            height: 100vh;
+            overflow-y: auto;
+        }
+        .left-half {
+            border-right: 1px solid #ccc;
+        }
+        /* Section spacing */
+        .section { margin-bottom: 20px; }
+        /* Map container and styling for 2D map visualization */
+        #map-container {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            margin-bottom: 20px;
+        }
+        #map-container h4 { margin-bottom: 15px; }
+        .country-map { margin-bottom: 10px; }
+        .country-name { font-weight: bold; margin-bottom: 5px; }
+        .land-bar {
+            height: 20px;
+            background-color: #007bff;
+            border-radius: 3px;
+        }
+        /* Tables */
+        table th, table td {
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-<div class="container mt-5">
-    <!-- 游戏基础信息 -->
-    <h1>{{ game.name }}</h1>
-    <h3>当前回合: <span id="current-round">{{ game.current_round }}</span></h3>
-    <p>
-        当前轮到: <span id="active-country">{{ active_country.name }}</span>
-        <span id="my-turn-status" class="badge badge-info ml-3"></span>
-    </p>
-
-    <!-- 国家列表 -->
-    <hr>
-    <h4>其他国家信息</h4>
-    <table class="table table-bordered">
-        <thead>
-        <tr>
-            <th>国家名称</th>
-            <th>金钱</th>
-            <th>人口</th>
-            <th>人口增长率</th>
-            <th>土地</th>
-        </tr>
-        </thead>
-        <tbody id="other-countries">
-        {% for country in countries %}
-            {% if country.id != my_country.id %}
-                <tr>
-                    <td>{{ country.name }}</td>
-                    <td>{{ country.money }}</td>
-                    <td>{{ country.population }}</td>
-                    <td>{{ country.population_growth_rate }}</td>
-                    <td>{{ country.land }}</td>
-                </tr>
-            {% endif %}
-        {% endfor %}
-        </tbody>
-    </table>
-
-    <!-- 我的国家 -->
-    <hr>
-    <h4>我的国家</h4>
-    <table class="table table-bordered">
-        <thead>
-        <tr>
-            <th>国家名称</th>
-            <th>金钱</th>
-            <th>人口</th>
-            <th>人口增长率</th>
-            <th>土地</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-            <td>{{ my_country.name }}</td>
-            <td>{{ my_country.money }}</td>
-            <td>{{ my_country.population }}</td>
-            <td>{{ my_country.population_growth_rate }}</td>
-            <td>{{ my_country.land }}</td>
-        </tr>
-        </tbody>
-    </table>
-
-    <!-- 商店区域 -->
-    <hr>
-    <h4>商店</h4>
+<div class="container-fluid">
     <div class="row">
-        <!-- 武器商店 -->
-        <div class="col-md-6">
-            <h5>武器</h5>
-            <ul class="list-group">
-                {% for weapon in shop_weapons %}
-                    <li class="list-group-item">
-                        <strong>{{ weapon.name }}</strong><br>
-                        价格: {{ weapon.price }}<br>
-                        人口伤害: {{ weapon.population_damage }}<br>
-                        土地伤害: {{ weapon.land_damage }}<br>
-                        <!-- 购买时不需要选择目标国家 -->
-                        <button class="btn btn-sm btn-primary purchase-weapon mt-2" data-weapon-id="{{ weapon.id }}">
-                            购买
-                        </button>
-                    </li>
-                {% endfor %}
-            </ul>
+        <!-- Left Half: Map and Country Information -->
+        <div class="col-md-6 left-half">
+            <!-- 2D Map at the top -->
+            <div id="map-container" class="section">
+                <h4>Map</h4>
+                <div id="map">
+                    <!-- Dynamic 2D map will be generated here -->
+                </div>
+            </div>
+            <!-- Country Information at the bottom -->
+            <div id="country-info" class="section">
+                <hr>
+                <h4>Other Country Information</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Country Name</th>
+                            <th>Money</th>
+                            <th>Population</th>
+                            <th>Growth Rate</th>
+                            <th>Land</th>
+                        </tr>
+                    </thead>
+                    <tbody id="other-countries">
+                        <!-- Rows updated dynamically -->
+                    </tbody>
+                </table>
+                <hr>
+                <h4>My Country</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Country Name</th>
+                            <th>Money</th>
+                            <th>Population</th>
+                            <th>Growth Rate</th>
+                            <th>Land</th>
+                        </tr>
+                    </thead>
+                    <tbody id="my-country-info">
+                        <!-- Rows updated dynamically -->
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <!-- 道具商店 -->
-        <div class="col-md-6">
-            <h5>道具</h5>
-            <ul class="list-group">
-                {% for tool in shop_tools %}
-                    <li class="list-group-item">
-                        <strong>{{ tool.name }}</strong><br>
-                        价格: {{ tool.price }}<br>
-                        人口增长: {{ tool.population_increase }}<br>
-                        土地增加: {{ tool.land_increase }}<br>
-                        <button class="btn btn-sm btn-primary purchase-tool mt-2" data-tool-id="{{ tool.id }}">
-                            购买
-                        </button>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
+
+        <!-- Right Half: Game Info, Actions, End Turn, Shop & Inventory -->
+        <div class="col-md-6 right-half">
+            <!-- Game Info -->
+            <div id="game-info" class="section">
+                <h1>{{ game.name }}</h1>
+                <h3>Current Round: <span id="current-round">{{ game.current_round }}</span></h3>
+                <p>
+                    Current Turn: <span id="active-country">{{ active_country.name }}</span>
+                    <span id="my-turn-status" class="badge badge-info ml-3"></span>
+                </p>
+            </div>
+            <hr>
+            <!-- Latest Three Actions -->
+            <div id="latest-actions" class="section">
+                <h4>Latest Three Actions</h4>
+                <ul class="list-group" id="action-log">
+                    <!-- Action log entries updated dynamically -->
+                </ul>
+            </div>
+            <hr>
+            <!-- End Turn Button -->
+            <div id="end-round" class="section">
+                <button id="end-turn" class="btn btn-danger">End Turn</button>
+            </div>
+            <hr>
+            <!-- Shop Section -->
+            <div id="shop-section" class="section">
+                <h4>Shop</h4>
+                <p>Remaining purchases this round: <span id="purchase-count">{{ purchase_remaining }}</span></p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Weapons</h5>
+                        <ul class="list-group">
+                            {% for weapon in shop_weapons %}
+                                <li class="list-group-item">
+                                    <strong>{{ weapon.name }}</strong><br>
+                                    Price: {{ weapon.price }}<br>
+                                    Population Damage: {{ weapon.population_damage }}<br>
+                                    Land Damage: {{ weapon.land_damage }}<br>
+                                    <button class="btn btn-sm btn-primary purchase-weapon mt-2" data-weapon-id="{{ weapon.id }}">Purchase</button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Tools</h5>
+                        <ul class="list-group">
+                            {% for tool in shop_tools %}
+                                <li class="list-group-item">
+                                    <strong>{{ tool.name }}</strong><br>
+                                    Price: {{ tool.price }}<br>
+                                    Population Increase: {{ tool.population_increase }}<br>
+                                    Land Increase: {{ tool.land_increase }}<br>
+                                    <button class="btn btn-sm btn-primary purchase-tool mt-2" data-tool-id="{{ tool.id }}">Purchase</button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <!-- Inventory Section -->
+            <div id="inventory-section" class="section">
+                <h4>Inventory</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Weapons</h5>
+                        <ul class="list-group" id="inventory-weapons">
+                            {% for weapon in my_country.weapons_inventory.all %}
+                                <li class="list-group-item">
+                                    <strong>{{ weapon.name }}</strong><br>
+                                    <label class="mt-2">Select Target Country:
+                                        <select class="form-control target-country-use mt-1" data-weapon-id="{{ weapon.id }}">
+                                            {% for country in countries %}
+                                                {% if country.id != my_country.id %}
+                                                    <option value="{{ country.id }}">{{ country.name }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <button class="btn btn-sm btn-success mt-2 use-weapon" data-weapon-id="{{ weapon.id }}">Use</button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Tools</h5>
+                        <ul class="list-group" id="inventory-tools">
+                            {% for tool in my_country.tools_inventory.all %}
+                                <li class="list-group-item">
+                                    <strong>{{ tool.name }}</strong>
+                                    <button class="btn btn-sm btn-success mt-2 use-tool" data-tool-id="{{ tool.id }}">Use</button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div><!-- End of Right Half -->
     </div>
-
-    <!-- 库存区域 -->
-    <hr>
-    <h4>库存</h4>
-    <div class="row">
-        <!-- 我的武器 -->
-        <div class="col-md-6">
-            <h5>我的武器</h5>
-            <ul class="list-group" id="inventory-weapons">
-                {% for weapon in my_country.weapons_inventory.all %}
-                    <li class="list-group-item">
-                        <strong>{{ weapon.name }}</strong><br>
-                        <label class="mt-2">选择目标国家:
-                            <select class="form-control target-country-use mt-1" data-weapon-id="{{ weapon.id }}">
-                                {% for country in countries %}
-                                    {% if country.id != my_country.id %}
-                                        <option value="{{ country.id }}">{{ country.name }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
-                        </label>
-                        <button class="btn btn-sm btn-success mt-2 use-weapon" data-weapon-id="{{ weapon.id }}">
-                            使用
-                        </button>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-        <!-- 我的道具 -->
-        <div class="col-md-6">
-            <h5>我的道具</h5>
-            <ul class="list-group" id="inventory-tools">
-                {% for tool in my_country.tools_inventory.all %}
-                    <li class="list-group-item">
-                        <strong>{{ tool.name }}</strong>
-                        <button class="btn btn-sm btn-success mt-2 use-tool" data-tool-id="{{ tool.id }}">
-                            使用
-                        </button>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
-
-    <!-- 最新动作记录区域 -->
-    <hr>
-    <h4>最新三条动作</h4>
-    <ul class="list-group" id="action-log">
-        <!-- 后端通过 ajax 返回最新动作记录 -->
-    </ul>
-
-    <!-- 结束回合 -->
-    <hr>
-    <button id="end-turn" class="btn btn-danger mt-3">本轮结束</button>
-    <div id="status-message" class="mt-3 text-info"></div>
 </div>
 
 <!-- jQuery and AJAX -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
-    // current_country_id
+    // Global variables
     var myCountryId = {{ my_country.id }};
-    // 全局定时器变量
     var pollInterval = null;
-    // 记录已提示的攻击记录（避免重复弹窗）
     var lastAlerted = "";
 
-    // 更新游戏状态，包括当前回合信息、活动国家、剩余购买次数以及最新动作
+    // Update the dynamic 2D map based on each country's land value
+    function updateMap(countries) {
+        var maxLand = 0;
+        countries.forEach(function(country) {
+            if (country.land > maxLand) {
+                maxLand = country.land;
+            }
+        });
+        var mapHTML = "";
+        if (maxLand === 0) {
+            mapHTML = "<div>No land data available.</div>";
+        } else {
+            countries.forEach(function(country) {
+                var barWidth = (country.land / maxLand) * 100;
+                mapHTML += "<div class='country-map'>";
+                mapHTML += "<div class='country-name'>" + country.name + "</div>";
+                mapHTML += "<div class='land-bar' style='width: " + barWidth + "%;'></div>";
+                mapHTML += "</div>";
+            });
+        }
+        $("#map").html(mapHTML);
+    }
+
+    // Update the country information tables on the left half
+    function updateCountryInfo(countries) {
+        var otherHTML = "";
+        var myHTML = "";
+        countries.forEach(function(country) {
+            var row = "<tr>" +
+                          "<td>" + country.name + "</td>" +
+                          "<td>" + country.money + "</td>" +
+                          "<td>" + country.population + "</td>" +
+                          "<td>" + country.population_growth_rate + "</td>" +
+                          "<td>" + country.land + "</td>" +
+                      "</tr>";
+            if (country.is_mine) {
+                myHTML += row;
+            } else {
+                otherHTML += row;
+            }
+        });
+        $("#other-countries").html(otherHTML);
+        $("#my-country-info").html(myHTML);
+    }
+
+    // Update latest actions log
+    function updateActionLog(actions) {
+        var logHtml = "";
+        if (actions && actions.length > 0) {
+            actions.forEach(function(log) {
+                logHtml += "<li class='list-group-item'>" + log.timestamp + " - " + log.action + "</li>";
+                if (log.action.indexOf("attack") !== -1 && log.action.indexOf("{{ my_country.name|escapejs }}") !== -1) {
+                    if (lastAlerted !== log.timestamp) {
+                        alert("You are under attack: " + log.action);
+                        lastAlerted = log.timestamp;
+                    }
+                }
+            });
+        } else {
+            logHtml = "<li class='list-group-item'>No records</li>";
+        }
+        $("#action-log").html(logHtml);
+    }
+
+    // Update game state and refresh all dynamic sections
     function updateGameStatus() {
         $.getJSON("{% url 'api_game_status' game.id %}", function (data) {
             $("#current-round").text(data.current_round);
             $("#active-country").text(data.active_country.name);
-            $("#status-message").text("本轮可购买剩余: " + data.purchase_remaining);
+            $("#purchase-count").text(data.purchase_remaining);
+            updateActionLog(data.last_actions);
+            updateMap(data.countries);
+            updateCountryInfo(data.countries);
 
-            // 判断是否是自己的回合
             if (data.active_country.id === myCountryId) {
-                $("#my-turn-status").text("轮到你了 ✅").removeClass().addClass("badge badge-success ml-3");
-                // 停止轮询以减少服务器占用
+                $("#my-turn-status").text("Your turn ✅").removeClass().addClass("badge badge-success ml-3");
                 if (pollInterval) {
                     clearInterval(pollInterval);
                     pollInterval = null;
                 }
             } else {
-                $("#my-turn-status").text("等待其他玩家...").removeClass().addClass("badge badge-secondary ml-3");
-                // 如果不是自己的回合，启动轮询（如果还未启动）
+                $("#my-turn-status").text("Waiting for other players...").removeClass().addClass("badge badge-secondary ml-3");
                 if (!pollInterval) {
                     pollInterval = setInterval(updateGameStatus, 1000);
                 }
             }
-
-            // 更新最新动作记录区域（显示所有玩家的最新三条记录）
-            var logHtml = "";
-            if (data.last_actions && data.last_actions.length > 0) {
-                data.last_actions.forEach(function(log) {
-                    logHtml += "<li class='list-group-item'>" +
-                        log.timestamp + " - " + log.action + "</li>";
-                    // 如果记录中包含“攻击”字样，并且指向当前国家且是新的记录，则提示受到攻击
-                    // 注意这里假定攻击记录中会包含当前国家名，确保服务器返回格式与此匹配
-                    if (log.action.indexOf("攻击") !== -1 && log.action.indexOf("{{ my_country.name|escapejs }}") !== -1) {
-                        if (lastAlerted !== log.timestamp) {
-                            alert("你受到攻击：" + log.action);
-                            lastAlerted = log.timestamp;
-                        }
-                    }
-                });
-            } else {
-                logHtml = "<li class='list-group-item'>暂无记录</li>";
-            }
-            $("#action-log").html(logHtml);
         });
     }
 
-    // 启动初始轮询（如果当前不是自己回合）
+    // Initial update and polling every second
     updateGameStatus();
     if (!pollInterval) {
         pollInterval = setInterval(updateGameStatus, 1000);
     }
 
-    // 购买武器（无需选择目标国家）
+    // Purchase Weapon (no target selection required)
     $(".purchase-weapon").click(function () {
         var weaponId = $(this).data("weapon-id");
         $.post("{% url 'purchase_item' game.id %}", {
@@ -243,7 +307,7 @@
         });
     });
 
-    // 购买道具
+    // Purchase Tool
     $(".purchase-tool").click(function () {
         var toolId = $(this).data("tool-id");
         $.post("{% url 'purchase_item' game.id %}", {
@@ -257,7 +321,7 @@
         });
     });
 
-    // 使用武器（需要选择目标国家）
+    // Use Weapon (with target country selection)
     $(".use-weapon").click(function () {
         var weaponId = $(this).data("weapon-id");
         var targetCountry = $(this).siblings("label").find("select").val();
@@ -273,7 +337,7 @@
         });
     });
 
-    // 使用道具（不需要选择目标国家）
+    // Use Tool (no target needed)
     $(".use-tool").click(function () {
         var toolId = $(this).data("tool-id");
         $.post("{% url 'use_item' game.id %}", {
@@ -287,7 +351,7 @@
         });
     });
 
-    // 结束回合（只能手动结束）
+    // End Turn
     $("#end-turn").click(function () {
         $.post("{% url 'end_turn' game.id %}", {
             csrfmiddlewaretoken: '{{ csrf_token }}'
