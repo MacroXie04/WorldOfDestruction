@@ -36,10 +36,42 @@
                 <p>No players have joined this game yet.</p>
             {% endif %}
 
-            <form action="{% url 'start_game' game_id=game.id %}" method="post" class="mt-3">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger w-100">Start Game</button>
-            </form>
+            {% if game.finished %}
+                <h4 class="mt-4">Ranking (Based on Population)</h4>
+                {% if ranking %}
+                    <table class="table table-bordered">
+                        <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Country Name</th>
+                            <th>Population</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for country in ranking %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ country.name }}</td>
+                                <td>{{ country.population }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No ranking available.</p>
+                {% endif %}
+            {% endif %}
+
+            {% if can_start_game %}
+                <form action="{% url 'start_game' game_id=game.id %}" method="post" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger w-100">Start Game</button>
+                </form>
+            {% else %}
+                {% if countries.count < 2 and not game.finished %}
+                    <p class="mt-3 text-warning">At least two players are required to start the game.</p>
+                {% endif %}
+            {% endif %}
         </div>
     </div>
 {% endblock %}

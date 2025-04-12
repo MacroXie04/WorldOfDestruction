@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-
+from django.urls import reverse
 from index.models import *
 
 
@@ -58,11 +58,14 @@ def api_game_status(request, game_id):
 
     if game.finished:
         game_status = 'finished'
+        redirect_url = reverse('game_detail', kwargs={'game_id': game.id})
     else:
         game_status = 'active'
+        redirect_url = ''
 
     game_data = {
         'game_status': game_status,
+        'redirect_url': redirect_url,
         'game_name': game.name,
         'current_round': game.current_round,
         'active_country': {'id': active_country.id, 'name': active_country.name} if active_country else None,
@@ -103,7 +106,6 @@ def api_game_status(request, game_id):
     except Turn.DoesNotExist:
         game_data['purchase_remaining'] = game.max_actions_per_turn
 
-    # get action logs from the database
     try:
         last_actions_qs = ActionLog.objects.filter(game=game).order_by('-timestamp')[:3]
         last_actions = []
@@ -118,7 +120,6 @@ def api_game_status(request, game_id):
     game_data['last_actions'] = last_actions
 
     return JsonResponse(game_data)
-
 
 @login_required(login_url='/login/')
 def purchase_item(request, game_id):

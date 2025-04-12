@@ -333,15 +333,17 @@
     // Update game state and refresh all dynamic sections
     function updateGameStatus() {
         $.getJSON("{% url 'api_game_status' game.id %}", function (data) {
+            if (data.game_status === 'finished' && data.redirect_url) {
+                window.location.href = data.redirect_url;
+                return;
+            }
             $("#current-round").text(data.current_round);
             $("#active-country").text(data.active_country.name);
             $("#purchase-count").text(data.purchase_remaining);
             updateActionLog(data.last_actions);
             updateMap(data.countries);
             updateCountryInfo(data.countries);
-            gameCountries = data.countries; // 更新全局国家数据
-            // 当国家信息更新后，刷新库存显示确保下拉列表使用最新数据
-            updateInventory();
+            gameCountries = data.countries; // update global countries
 
             if (data.active_country.id === myCountryId) {
                 $("#my-turn-status").text("Your turn ✅").removeClass().addClass("badge badge-success ml-3");
