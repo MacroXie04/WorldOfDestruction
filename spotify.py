@@ -14,7 +14,7 @@ SPOTIFY_CLIENT_ID = "05a2b6bdbd6340959f69a4073a4b4f86"
 SPOTIFY_CLIENT_SECRET = "5f649f2805884a329ad197520250f29c"
 SPOTIFY_REDIRECT_URI = "http://localhost:8000/callback"
 PLAYLIST_ID = '1FdixOmnorQbFb4cNchYBg'
-DOWNLOAD_DIR = 'index/static/music'
+DOWNLOAD_DIR = 'index\static\music'
 
 # === INIT SPOTIPY ===
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
@@ -86,85 +86,112 @@ def cleanup_extra_downloads(playlist_tracks):
             os.remove(path)
             print(f"🗑️ Removed outdated song: {filename}")
 
-# === GLOBAL STATE ===
-current_index = 0
-playlist = []
-playlist_tracks = []
-
 # === MUSIC PLAYER ===
-def play_next():
-    global current_index, playlist, playlist_tracks
-    if current_index < len(playlist):
+def play_songs_in_order(folder, playlist_tracks):
+    pygame.init()
+    pygame.mixer.init()
+    pygame.mixer.music.set_volume(0.7)
+
+    playlist = sorted(Path(folder).glob("*.mp3"))
+    if not playlist:
+        print("⚠️ No songs found to play.")
+        return
+
+    current_index = 0
+    playing = True
+    current_song_path = None  # To store the current song's path
+
+    while playing and current_index < len(playlist):
         song_path = playlist[current_index]
         print(f"🎧 Now playing: {song_path.name}")
         pygame.mixer.music.load(str(song_path))
         pygame.mixer.music.play()
-    else:
-        print("🎉 Playlist finished.")
+
+        current_song_path = song_path  # Store current song path for skipping
+
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
+
+        # Remove the song from the folder after it finishes playing
+        os.remove(song_path)
+        print(f"🗑️ Removed {song_path.name} from the downloads folder.")
+
+        # Remove the song from the Spotify playlist
+        song_name = sanitize_filename(song_path.stem)
+        for track in playlist_tracks:
+            if song_name.lower() == sanitize_filename(f"{track['name']} - {track['artists']}").lower():
+                sp.playlist_remove_all_occurrences_of_items(PLAYLIST_ID, [track['id']])
+                print(f"❌ Removed {track['name']} by {track['artists']} from the Spotify playlist.")
+                break
+
+        current_index += 1
+        if current_index >= len(playlist):
+            print("🎉 Playlist finished.")
+            playing = False
+
+    print("Playback finished.")
+    return current_song_path  # Return the current song path for skipping
 
 # === MANUAL UPDATE FUNCTION ===
 def manual_update():
-    global playlist, playlist_tracks, current_index
-
     print("🔄 Starting manual playlist sync...")
+
     playlist_tracks = get_playlist_tracks(sp, PLAYLIST_ID)
+    current_hash = get_playlist_hash(playlist_tracks)
+    print("📦 Syncing new playlist...")
 
     for track in playlist_tracks:
         download_song(track['name'], track['artists'])
         time.sleep(1)
 
     cleanup_extra_downloads(playlist_tracks)
-    playlist = sorted(Path(DOWNLOAD_DIR).glob("*.mp3"))
-    current_index = 0
-    play_next()
+    play_songs_in_order(DOWNLOAD_DIR, playlist_tracks)
 
-# === SKIP FUNCTION ===
-def skip_song():
-    global current_index, playlist, playlist_tracks
-    if current_index < len(playlist):
-        song_path = playlist[current_index]
-        print(f"⏩ Skipping and removing: {song_path.name}")
-        pygame.mixer.music.stop()
-        pygame.mixer.music.unload()
+# === SKIP FUNCTION (Updated) ===
+def skip_song(playlist_tracks, current_song_path):
+    pygame.mixer.music.stop()
+    print("⏩ Song skipped.")
 
-        song_name = sanitize_filename(song_path.stem)
-        for track in playlist_tracks:
-            if song_name.lower() == sanitize_filename(f"{track['name']} - {track['artists']}").lower():
-                sp.playlist_remove_all_occurrences_of_items(PLAYLIST_ID, [track['id']])
-                print(f"❌ Removed {track['name']} by {track['artists']} from Spotify.")
-                break
+    # Remove the song from the downloads folder and Spotify playlist
+    song_name = sanitize_filename(current_song_path.stem)
+    for track in playlist_tracks:
+        if song_name.lower() == sanitize_filename(f"{track['name']} - {track['artists']}").lower():
+            sp.playlist_remove_all_occurrences_of_items(PLAYLIST_ID, [track['id']])
+            print(f"❌ Removed {track['name']} by {track['artists']} from the Spotify playlist.")
+            break
 
-        os.remove(song_path)
-        current_index += 1
-        play_next()
-    else:
-        print("⚠️ No more songs to skip.")
+    # Remove the song from the downloads folder
+    os.remove(current_song_path)
+    print(f"🗑️ Removed {current_song_path.name} from the downloads folder.")
 
-# === COMMAND LISTENER ===
-def command_listener():
+    # Move to the next song
+    return play_songs_in_order(DOWNLOAD_DIR, playlist_tracks)  # Play the next song
+
+# === ASYNC FUNCTION TO ALLOW UPDATES AND SKIP WHILE PLAYING ===
+def update_and_skip_async():
+    current_song_path = None  # Store current song path to skip
+    playlist_tracks = get_playlist_tracks(sp, PLAYLIST_ID)
+
     while True:
-        command = input("").strip().lower()
-        if command == "!update":
+        command = input("Enter command: ")
+        if command.strip() == "!update":
             manual_update()
-        elif command == "!skip":
-            skip_song()
+        elif command.strip() == "!skip":
+            if current_song_path:
+                current_song_path = skip_song(playlist_tracks, current_song_path)
+            else:
+                print("⚠️ No song is currently playing to skip.")
 
 # === MAIN ===
 if __name__ == '__main__':
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-    pygame.init()
-    pygame.mixer.init()
-    pygame.mixer.music.set_volume(0.1)
 
-    print("💻 Type `!update` to sync the playlist.")
+    print("💻 Type `!update` to manually update the playlist and play music.")
     print("💻 Type `!skip` to skip the current song.")
 
-    threading.Thread(target=command_listener, daemon=True).start()
-    manual_update()
+    # Start the update and skip listener in a separate thread
+    threading.Thread(target=update_and_skip_async, daemon=True).start()
 
-    # Auto-play next song when one finishes
-    while True:
-        if not pygame.mixer.music.get_busy() and current_index < len(playlist):
-            current_index += 1
-            play_next()
-        time.sleep(1)
+    # Initial playlist download and playback
+    playlist_tracks = get_playlist_tracks(sp, PLAYLIST_ID)
+    current_song_path = play_songs_in_order(DOWNLOAD_DIR, playlist_tracks)
