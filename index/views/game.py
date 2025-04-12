@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+
 from index.forms.CountryForm import CountryForm
 from index.forms.CreateGameForm import CreateGameForm
 from index.models import *
@@ -51,7 +51,18 @@ def find_games(request):
 def game_detail(request, game_id):
     game = get_object_or_404(Game, id=game_id)
     countries = game.countries.all()
-    return render(request, 'game_detail.html', {'game': game, 'countries': countries})
+    ranking = []
+    # 如果游戏结束则生成排名
+    if game.finished:
+        ranking = countries.order_by('-population')
+    # 只有当玩家数量不少于2且游戏未结束时，才允许开始游戏
+    can_start_game = (countries.count() >= 2) and (not game.finished)
+    return render(request, 'game_detail.html', {
+        'game': game,
+        'countries': countries,
+        'ranking': ranking,
+        'can_start_game': can_start_game,
+    })
 
 
 @login_required(login_url='/login/')
@@ -84,4 +95,3 @@ def game_room(request, game_id):
         'shop_tools': shop_tools,
     }
     return render(request, 'game_room.html', context)
-
