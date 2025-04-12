@@ -227,7 +227,6 @@
     // Global variables
     var myCountryId = {{ my_country.id }};
     var pollInterval = null;
-    var lastAlerted = "";
     var gameCountries = []; // Global storage for countries from game status API
 
     // Function to show a popup modal with a message
@@ -287,12 +286,7 @@
         if (actions && actions.length > 0) {
             actions.forEach(function (log) {
                 logHtml += "<li class='list-group-item'>" + log.timestamp + " - " + log.action + "</li>";
-                if (log.action.indexOf("attack") !== -1 && log.action.indexOf("{{ my_country.name|escapejs }}") !== -1) {
-                    if (lastAlerted !== log.timestamp) {
-                        {#showPopup("You are under attack: " + log.action);#}
-                        lastAlerted = log.timestamp;
-                    }
-                }
+                // 此处如果需要弹出提醒，可考虑用唯一标识避免重复弹出（这里暂时屏蔽）
             });
         } else {
             logHtml = "<li class='list-group-item'>No records</li>";
@@ -304,7 +298,7 @@
     function updateInventory() {
         $.getJSON("{% url 'api_user_inventory' game.id %}", function (data) {
             var weaponsHtml = "";
-            // 直接遍历 data.weapons，each entry 代表一份物品
+            // 遍历 data.weapons，每一条数据代表一份物品
             data.weapons.forEach(function (weapon) {
                 weaponsHtml += "<li class='list-group-item'>";
                 weaponsHtml += "<strong>" + weapon.name + "</strong>";
@@ -318,6 +312,7 @@
                         }
                     });
                 }
+                // 保证 label 与按钮为兄弟元素，方便后续查找
                 weaponsHtml += "<select class='form-control target-country-use mt-1' data-weapon-id='" + weapon.id + "'>" + targetOptions + "</select></label>";
                 weaponsHtml += "<button class='btn btn-sm btn-success use-weapon mt-2' data-weapon-id='" + weapon.id + "'>Use One</button>";
                 weaponsHtml += "</li>";
@@ -335,26 +330,6 @@
         });
     }
 
-    // 使用武器时，验证是否选择了目标国家
-    $(document).on("click", ".use-weapon", function () {
-        var weaponId = $(this).data("weapon-id");
-        // 查找同级 label 内的 select 元素的值
-        var targetCountry = $(this).siblings("label").find("select").val();
-        if (!targetCountry) {
-            showPopup("Please select a target country before using the weapon.");
-            return;
-        }
-        $.post("{% url 'use_item' game.id %}", {
-            item_type: 'weapon',
-            item_id: weaponId,
-            target_country: targetCountry,
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        }, function (data) {
-            showPopup(data.message);
-            updateGameStatus();
-        });
-    });
-
     // Update game state and refresh all dynamic sections
     function updateGameStatus() {
         $.getJSON("{% url 'api_game_status' game.id %}", function (data) {
@@ -364,7 +339,9 @@
             updateActionLog(data.last_actions);
             updateMap(data.countries);
             updateCountryInfo(data.countries);
-            gameCountries = data.countries; // update global countries
+            gameCountries = data.countries; // 更新全局国家数据
+            // 当国家信息更新后，刷新库存显示确保下拉列表使用最新数据
+            updateInventory();
 
             if (data.active_country.id === myCountryId) {
                 $("#my-turn-status").text("Your turn ✅").removeClass().addClass("badge badge-success ml-3");
@@ -381,14 +358,9 @@
         });
     }
 
-    // Initial update and polling every second
-    updateGameStatus();
-    updateInventory()
-    if (!pollInterval) {
-        pollInterval = setInterval(updateGameStatus, 1000);
-    }
+    // 绑定购买与使用事件
 
-    // Purchase Weapon (no target selection required)
+    // Purchase Weapon
     $(document).on("click", ".purchase-weapon", function () {
         var weaponId = $(this).data("weapon-id");
         $.post("{% url 'purchase_item' game.id %}", {
@@ -397,7 +369,8 @@
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
             showPopup(data.message);
-            updateInventory()
+            // 购买后更新库存显示
+            updateInventory();
         });
     });
 
@@ -410,14 +383,20 @@
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
             showPopup(data.message);
-            updateInventory()
+            updateInventory();
         });
     });
 
     // Use Weapon (with target country selection)
+    // 请确保只绑定一次 use-weapon 的事件处理
     $(document).on("click", ".use-weapon", function () {
         var weaponId = $(this).data("weapon-id");
+        // 查找同级 label 内的 select 元素的值
         var targetCountry = $(this).siblings("label").find("select").val();
+        if (!targetCountry) {
+            showPopup("Please select a target country before using the weapon.");
+            return;
+        }
         $.post("{% url 'use_item' game.id %}", {
             item_type: 'weapon',
             item_id: weaponId,
@@ -451,6 +430,12 @@
             updateGameStatus();
         });
     });
+
+    // Initial update and polling every second
+    updateGameStatus();
+    if (!pollInterval) {
+        pollInterval = setInterval(updateGameStatus, 1000);
+    }
 </script>
 </body>
 </html>

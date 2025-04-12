@@ -273,6 +273,21 @@ def use_item(request, game_id):
         target_country.land = max(0, target_country.land - weapon.land_damage)
         target_country.save()
 
+        # 检测目标国家是否被消灭（人口或土地降至0），若是则自动结束游戏
+        if target_country.population == 0 or target_country.land == 0:
+            game.finished = True
+            game.can_join = False
+            game.save()
+            # 记录游戏结束的日志
+            ActionLog.objects.create(
+                game=game,
+                country=target_country,
+                action=(f"{target_country.name} has been eliminated "
+                        f"by {my_country.name}'s weapon '{weapon.name}'. Game over.")
+            )
+            return JsonResponse({'message': f'Weapon {weapon.name} used on {target_country.name}. ' +
+                                             f"{target_country.name} has been eliminated. Game over."})
+
         # Record weapon usage in the current turn
         turn.used_weapons.add(weapon)
 
@@ -330,7 +345,6 @@ def use_item(request, game_id):
 
     else:
         return JsonResponse({'error': 'Invalid item type.'}, status=400)
-
 
 @login_required(login_url='/login/')
 def end_turn(request, game_id):
