@@ -1,6 +1,17 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+def get_active_country(game):
+    """
+    返回游戏当前回合中还未进行决策的第一个国家，
+    如果所有国家都已决策，则返回第一个国家（用于重置回合）。
+    """
+    countries = list(game.countries.all().order_by('created'))
+    for country in countries:
+        if not Turn.objects.filter(game=game, country=country, round_number=game.current_round).exists():
+            return country
+    return countries[0] if countries else None
+
 class UserProfile(models.Model):
     # foreign key to user
     user = models.OneToOneField(User, on_delete=models.CASCADE)

@@ -1,42 +1,46 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>查找游戏</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+  <meta charset="UTF-8">
+  <title>查找游戏</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
 </head>
 <body>
-<div class="container mt-5">
+  <div class="container mt-5">
     <h2>可加入的游戏列表</h2>
     {% if games %}
-        <table class="table table-bordered">
-            <thead>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>游戏ID</th>
+            <th>游戏名称</th>
+            <th>当前回合</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for game in games %}
             <tr>
-                <th>游戏ID</th>
-                <th>游戏名称</th>
-                <th>当前回合</th>
-                <th>创建时间</th>
-                <th>操作</th>
+              <td>{{ game.id }}</td>
+              <td>{{ game.name }}</td>
+              <td>{{ game.current_round }}</td>
+              <td>{{ game.created }}</td>
+              <td>
+                {% if game.user_joined %}
+                  <span class="badge badge-info">已加入</span>
+                {% else %}
+                  <a href="{% url 'create_country' game_id=game.id %}" class="btn btn-success">加入游戏</a>
+                {% endif %}
+              </td>
             </tr>
-            </thead>
-            <tbody>
-            {% for game in games %}
-                <tr>
-                    <td>{{ game.id }}</td>
-                    <td>{{ game.name }}</td>
-                    <td>{{ game.current_round }}</td>
-                    <td>{{ game.created }}</td>
-                    <td>
-                        <a href="{% url 'create_country' game_id=game.id %}" class="btn btn-success">加入游戏</a>
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+          {% endfor %}
+        </tbody>
+      </table>
     {% else %}
-        <p>当前没有可加入的游戏。</p>
+      <p>当前没有可加入的游戏。</p>
     {% endif %}
     <a href="{% url 'create_game' %}" class="btn btn-primary mt-3">创建新游戏</a>
-</div>
+  </div>
 </body>
 </html>

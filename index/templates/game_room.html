@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ game.name }} - 游戏中</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h1>{{ game.name }}</h1>
+    <h3>当前回合: <span id="current-round">{{ game.current_round }}</span></h3>
+    <p>当前轮到: <span id="active-country">{{ active_country.name }}</span></p>
+
+    <hr>
+    <h4>其他国家信息</h4>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>国家名称</th>
+            <th>金钱</th>
+            <th>人口</th>
+            <th>人口增长率</th>
+            <th>土地</th>
+        </tr>
+        </thead>
+        <tbody id="other-countries">
+        {% for country in countries %}
+            {% if country.id != my_country.id %}
+                <tr>
+                    <td>{{ country.name }}</td>
+                    <td>{{ country.money }}</td>
+                    <td>{{ country.population }}</td>
+                    <td>{{ country.population_growth_rate }}</td>
+                    <td>{{ country.land }}</td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    <h4>我的国家</h4>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>国家名称</th>
+            <th>金钱</th>
+            <th>人口</th>
+            <th>人口增长率</th>
+            <th>土地</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>{{ my_country.name }}</td>
+            <td>{{ my_country.money }}</td>
+            <td>{{ my_country.population }}</td>
+            <td>{{ my_country.population_growth_rate }}</td>
+            <td>{{ my_country.land }}</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <hr>
+    <h4>商店</h4>
+    <div class="row">
+        <div class="col-md-6">
+            <h5>武器</h5>
+            <ul id="shop-weapons" class="list-group">
+                {% for weapon in shop_weapons %}
+                    <li class="list-group-item">
+                        <strong>{{ weapon.name }}</strong> - 价格: {{ weapon.price }}
+                        - 人口伤害: {{ weapon.population_damage }} - 土地伤害: {{ weapon.land_damage }}
+                        <br>
+                        <label>
+                            选择目标国家:
+                            <select class="form-control target-country" data-weapon-id="{{ weapon.id }}">
+                                {% for country in countries %}
+                                    {% if country.id != my_country.id %}
+                                        <option value="{{ country.id }}">{{ country.name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <button class="btn btn-primary btn-sm purchase-weapon" data-weapon-id="{{ weapon.id }}">购买
+                        </button>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h5>道具</h5>
+            <ul id="shop-tools" class="list-group">
+                {% for tool in shop_tools %}
+                    <li class="list-group-item">
+                        <strong>{{ tool.name }}</strong> - 价格: {{ tool.price }}
+                        - 人口增加: {{ tool.population_increase }} - 土地增加: {{ tool.land_increase }}
+                        <br>
+                        <button class="btn btn-primary btn-sm purchase-tool" data-tool-id="{{ tool.id }}">购买</button>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <hr>
+    <button id="end-turn" class="btn btn-danger">本轮结束</button>
+
+    <div id="status-message" class="mt-3"></div>
+</div>
+
+<!-- jQuery 用于 AJAX 更新 -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+    // 定时更新游戏状态接口
+    function updateGameStatus() {
+        $.getJSON("{% url 'api_game_status' game.id %}", function (data) {
+            $("#current-round").text(data.current_round);
+            $("#active-country").text(data.active_country.name);
+
+            // 更新其他国家信息
+            var otherHtml = "";
+            data.countries.forEach(function (country) {
+                if (!country.is_mine) {
+                    otherHtml += "<tr>" +
+                        "<td>" + country.name + "</td>" +
+                        "<td>" + country.money + "</td>" +
+                        "<td>" + country.population + "</td>" +
+                        "<td>" + country.population_growth_rate + "</td>" +
+                        "<td>" + country.land + "</td>" +
+                        "</tr>";
+                }
+            });
+            $("#other-countries").html(otherHtml);
+
+            // 显示当前剩余购买次数
+            $("#status-message").text("本轮购买剩余: " + data.purchase_remaining);
+        });
+    }
+
+    // 每 5 秒轮询一次
+    setInterval(updateGameStatus, 5000);
+
+    // 购买武器：获取选中目标国家
+    $(".purchase-weapon").click(function () {
+        var weaponId = $(this).data("weapon-id");
+        var targetCountry = $(this).siblings("label").find("select").val();
+        $.post("{% url 'purchase_item' game.id %}", {
+            item_type: 'weapon',
+            item_id: weaponId,
+            target_country: targetCountry,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+   ion(data) {
+
+        a.message);
+
+    te
+        G
+    meS
+    tus();
+
+       });
+});
+
+// 购买道具
+$(".purchase-t oo "
+        ck( unctio (  {
+    var toolId = $(th
+        ata("tool- d
+            .post("{% url 'purchase_item' game.id %}",
+       pe: 'too ',
+     id: toolId,
+         sr
+        le aretoken : '{{ csrf_token }}'
+    }, funct
+         {
+                alert(da
+    ss
+        a
+    e);
+           update
+    ameStatus();
+    });
+});
+
+//  处理 本
+        钮
+$("#end- u
+            k(function() {
+$ po{% url 'end_turn' game.id %}
+        ,
+         csrfm d
+            ken: '{{ csrf_token }} f
+    n
+    ert(dat
+    .message);
+   </script>
+</body>
+</html>
