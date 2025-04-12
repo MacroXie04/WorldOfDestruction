@@ -2,14 +2,11 @@ from django.contrib.auth.models import User
 from django.db import models
 
 
-# 使用时在函数内部再导入 Turn，避免循环引用
 def get_active_country(game):
-    from .models import Turn  # 延迟导入确保 Turn 已定义
+    from .models import Turn
     countries = list(game.countries.all().order_by('created'))
     for country in countries:
-        # 获取当前轮该国家的 Turn 记录（如果存在）
         turn = Turn.objects.filter(game=game, country=country, round_number=game.current_round).first()
-        # 如果没有记录，或记录存在但未结束，则返回该国家
         if not turn or not turn.ended:
             return country
     return countries[0] if countries else None

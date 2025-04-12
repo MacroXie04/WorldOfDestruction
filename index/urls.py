@@ -1,5 +1,5 @@
 from django.urls import path
-from index.views.api import *
+from index.views.game_play_api import *
 from index.views.game import *
 from index.views.user_verification import user_login, register, logout
 

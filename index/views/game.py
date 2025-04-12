@@ -75,6 +75,7 @@ def game_room(request, game_id):
     active_country = get_active_country(game)
     shop_weapons = Weapon.objects.all()
     shop_tools = Tools.objects.all()
+    # TODO: 信息更新
     context = {
         'game': game,
         'my_country': my_country,

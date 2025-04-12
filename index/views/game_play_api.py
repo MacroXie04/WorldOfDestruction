@@ -59,10 +59,8 @@ def api_game_status(request, game_id):
     except Turn.DoesNotExist:
         game_data['purchase_remaining'] = game.max_actions_per_turn
 
-    # 获取最新三条动作记录（全部玩家）
-    # 假设 ActionLog 模型已定义，并且与游戏关联（字段 game）
+    # get action logs from the database
     try:
-        from index.models import ActionLog  # 导入 ActionLog 模型
         last_actions_qs = ActionLog.objects.filter(game=game).order_by('-timestamp')[:3]
         last_actions = []
         for log in last_actions_qs:
@@ -84,26 +82,29 @@ def purchase_item(request, game_id):
         return JsonResponse({'error': 'POST required.'}, status=400)
 
     game = get_object_or_404(Game, id=game_id)
+    # check game status
+    if game.finished:
+        return JsonResponse({'error': 'Game is not active.'}, status=400)
 
-    # 当前用户国家
+    # current user country
     try:
         my_country = game.countries.get(user=request.user)
     except Country.DoesNotExist:
         return JsonResponse({'error': 'User has not joined the game.'}, status=400)
 
-    # 当前轮是否轮到该玩家行动
+    # confirm user can be active
     active_country = get_active_country(game)
     if active_country is None or my_country.id != active_country.id:
-        return JsonResponse({'error': '现在不是您的回合，请等待其他玩家决策。'}, status=403)
+        return JsonResponse({'error': 'Please wait for other players'}, status=403)
 
-    # 获取请求参数
+    # retrieve item type and id from request
     item_type = request.POST.get('item_type')
     item_id = request.POST.get('item_id')
 
     if not item_type or not item_id:
         return JsonResponse({'error': 'Missing parameters.'}, status=400)
 
-    # 获取或创建该轮该国的 turn 记录
+    # get or create current turn
     turn, _ = Turn.objects.get_or_create(
         game=game,
         country=my_country,
@@ -113,8 +114,9 @@ def purchase_item(request, game_id):
     # 检查是否已达到购买上限
     used_count = turn.used_tools.count() + turn.used_weapons.count()
     if used_count >= game.max_actions_per_turn:
-        return JsonResponse({'error': '本轮购买已达上限（最多 2 个）'}, status=400)
+        return JsonResponse({'error': 'Purchase limit reached'}, status=400)
 
+    # TODO: 检查是否有足够的资金和扣除资金
     # 处理武器购买
     if item_type == 'weapon':
         try:
@@ -183,6 +185,8 @@ def use_item(request, game_id):
             return JsonResponse({'error': 'Target country not found.'}, status=404)
 
         # 应用武器伤害，减少目标国家的人口和土地（不小于0）
+        # TODO: 检查目标国家是否在同一游戏中
+        # TODO: 检查目标国家是否已被消灭（人口或土地为0）消灭则游戏结束
         target_country.population = max(0, target_country.population - weapon.population_damage)
         target_country.land = max(0, target_country.land - weapon.land_damage)
         target_country.save()
