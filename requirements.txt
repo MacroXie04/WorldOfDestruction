@@ -1,0 +1,4 @@
+django
+spotipy
+pygame
+yt-dlp
