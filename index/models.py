@@ -64,7 +64,7 @@ class Country(models.Model):
     name = models.CharField(max_length=100)
     money = models.IntegerField()
     population = models.IntegerField()
-    population_growth_rate = models.FloatField(default=10.0)
+    population_growth_rate = models.FloatField(default=1.0)
     land = models.IntegerField()
     created = models.DateTimeField(auto_now_add=True)
     # 使用 through 模型记录库存
