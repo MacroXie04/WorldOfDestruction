@@ -12,9 +12,10 @@ import threading
 # === SETTINGS ===
 SPOTIFY_CLIENT_ID = "05a2b6bdbd6340959f69a4073a4b4f86"
 SPOTIFY_CLIENT_SECRET = "5f649f2805884a329ad197520250f29c"
-SPOTIFY_REDIRECT_URI = "http://localhost:8000/callback"
+SPOTIFY_REDIRECT_URI = "http://localhost:8000/callback" #callback 接口
 PLAYLIST_ID = '1FdixOmnorQbFb4cNchYBg'
 DOWNLOAD_DIR = 'index/static/music'
+SOUND_DIR = 'index/static/sounds'
 
 # === INIT SPOTIPY ===
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
@@ -149,12 +150,45 @@ def command_listener():
         elif command == "!skip":
             skip_song()
 
+def play_sword():
+    sword_sound.play()
+
+def play_gun():
+    gun_sound.play()
+    time.sleep(1)
+    gun_sound.play()
+
+def play_plane():
+    plane_sound.play()
+
+def play_nuke():
+    nuke_sound.play()
+
 # === MAIN ===
 if __name__ == '__main__':
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
     pygame.init()
     pygame.mixer.init()
-    pygame.mixer.music.set_volume(0.1)
+    
+    global plane_sound
+    global nuke_sound
+    global gun_sound
+    global sword_sound
+
+    plane_sound = pygame.mixer.Sound(f"{SOUND_DIR}/plane_sound.mp3")         
+    nuke_sound = pygame.mixer.Sound(f"{SOUND_DIR}/nuke_sound.mp3")
+    gun_sound = pygame.mixer.Sound(f"{SOUND_DIR}/gun_sound.mp3")
+    sword_sound = pygame.mixer.Sound(f"{SOUND_DIR}/sword_sound.mp3")
+
+    pygame.mixer.Sound.set_volume(sword_sound, 0.1)
+    pygame.mixer.Sound.set_volume(gun_sound, 0.1)
+    pygame.mixer.Sound.set_volume(plane_sound, 0.1)
+    pygame.mixer.Sound.set_volume(nuke_sound, 0.5)
+
+    #play_plane()
+    #play_nuke()
+    play_gun()
+    #play_sword()
 
     print("💻 Type `!update` to sync the playlist.")
     print("💻 Type `!skip` to skip the current song.")
