@@ -12,6 +12,17 @@ def get_active_country(game):
     return countries[0] if countries else None
 
 
+class CountryTemplate(models.Model):
+    name = models.CharField(max_length=100)
+    population = models.IntegerField()
+    land = models.IntegerField()
+    money = models.IntegerField()
+    population_growth_rate = models.FloatField(default=10.0)
+
+    def __str__(self):
+        return f"{self.name} - Population: {self.population} - Land: {self.land} - Money: {self.money}"
+
+
 class UserProfile(models.Model):
     # foreign key to user
     user = models.OneToOneField(User, on_delete=models.CASCADE)

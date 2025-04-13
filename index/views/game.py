@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 
-from index.forms.CountryForm import CountryForm
+from index.forms.CountryForm import CountryFromTemplateForm
 from index.forms.CreateGameForm import CreateGameForm
 from index.models import *
 
@@ -27,16 +27,30 @@ def create_country(request, game_id):
         return redirect('game_detail', game_id=game.id)
 
     if request.method == 'POST':
-        form = CountryForm(request.POST)
+        form = CountryFromTemplateForm(request.POST)
         if form.is_valid():
-            country = form.save(commit=False)
-            country.user = request.user
-            country.save()
+            chosen_template = form.cleaned_data['template']
+
+            # 根据所选模板数据创建新的 Country
+            country = Country.objects.create(
+                user=request.user,
+                name=chosen_template.name,
+                money=chosen_template.money,
+                population=chosen_template.population,
+                population_growth_rate=chosen_template.population_growth_rate,
+                land=chosen_template.land
+            )
+
+            # 将这个 Country 加入到当前 Game
             game.countries.add(country)
             return redirect('game_detail', game_id=game.id)
     else:
-        form = CountryForm()
-    return render(request, 'create_country.html', {'form': form, 'game': game})
+        form = CountryFromTemplateForm()
+
+    return render(request, 'create_country.html', {
+        'form': form,
+        'game': game
+    })
 
 
 @login_required(login_url='/login/')
@@ -52,10 +66,10 @@ def game_detail(request, game_id):
     game = get_object_or_404(Game, id=game_id)
     countries = game.countries.all()
     ranking = []
-    # 如果游戏结束则生成排名
+    # if the game is finished, show the ranking
     if game.finished:
         ranking = countries.order_by('-population')
-    # 只有当玩家数量不少于2且游戏未结束时，才允许开始游戏
+    # the number of player in the game is can not less than 2
     can_start_game = (countries.count() >= 2) and (not game.finished)
     return render(request, 'game_detail.html', {
         'game': game,

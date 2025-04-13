@@ -380,6 +380,16 @@ def end_turn(request, game_id):
 
     if all_ended:
         game.current_round += 1
+
+        # 更新所有国家的状态
+        for country in countries:
+            # 更新国家的土地和人口
+            country.population += int(country.population * (country.population_growth_rate / 100))
+
+            # each people contributes 10 money for the country each turn
+            country.money += int(country.money) + int(country.population) * 10
+            country.save()
+
         game.save()
 
     new_active = get_active_country(game)

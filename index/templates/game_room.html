@@ -53,6 +53,39 @@
             border-radius: 3px;
         }
 
+        /* 新增的网格地图样式 */
+        #map-grid {
+            display: grid;
+            grid-template-columns: repeat(40, 1fr); /* 40列更密集的网格 */
+            gap: 1px;
+            background: #2c3e50;
+            padding: 5px;
+            border: 2px solid #34495e;
+            border-radius: 8px;
+            max-width: 600px;
+        }
+
+        .map-cell {
+            aspect-ratio: 1;
+            min-width: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .map-cell:hover::after {
+            content: attr(data-country);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
         /* Tables */
         table th, table td {
             text-align: center;
@@ -105,6 +138,14 @@
                     <!-- Rows updated dynamically -->
                     </tbody>
                 </table>
+            </div>
+
+            <div id="spotify-section" class="section">
+                <iframe style="border-radius:12px"
+                        src="https://open.spotify.com/embed/playlist/1FdixOmnorQbFb4cNchYBg?utm_source=generator"
+                        width="100%" height="352" frameBorder="0" allowfullscreen=""
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"></iframe>
             </div>
         </div>
 
@@ -235,27 +276,58 @@
         $("#messageModal").modal('show');
     }
 
+    // 生成唯一颜色（基于国家ID）
+    function getCountryColor(countryId) {
+        const hue = (countryId * 137.508) % 360; // 黄金角分布算法
+        return `hsl(${hue}, 70%, 50%)`;
+    }
+
     // Update the dynamic 2D map based on each country's land value
+    // 更新为2D网格地图
     function updateMap(countries) {
-        var maxLand = 0;
-        countries.forEach(function (country) {
-            if (country.land > maxLand) {
-                maxLand = country.land;
+        const gridSize = 20 * 20; // 20x20网格
+        const totalLand = countries.reduce((sum, c) => sum + c.land, 0);
+        const mapContainer = document.getElementById('map');
+
+        // 清空现有地图
+        mapContainer.innerHTML = '<div id="map-grid"></div>';
+        const grid = document.getElementById('map-grid');
+
+        // 根据土地比例分配格子
+        countries.sort((a, b) => b.land - a.land); // 大国家优先
+        let remainingCells = gridSize;
+
+        countries.forEach(country => {
+            const cellCount = totalLand > 0 ?
+                Math.min(
+                    Math.round((country.land / totalLand) * gridSize),
+                    remainingCells
+                ) : 0;
+
+            // 创建格子元素
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < cellCount; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'map-cell';
+                cell.style.background = getCountryColor(country.id);
+                cell.title = `${country.name} (${country.land} land)`;
+                frag.appendChild(cell);
             }
+            grid.appendChild(frag);
+            remainingCells -= cellCount;
         });
-        var mapHTML = "";
-        if (maxLand === 0) {
-            mapHTML = "<div>No land data available.</div>";
-        } else {
-            countries.forEach(function (country) {
-                var barWidth = (country.land / maxLand) * 100;
-                mapHTML += "<div class='country-map'>";
-                mapHTML += "<div class='country-name'>" + country.name + "</div>";
-                mapHTML += "<div class='land-bar' style='width: " + barWidth + "%;'></div>";
-                mapHTML += "</div>";
-            });
+
+        // 填充剩余格子为白色
+        if (remainingCells > 0) {
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < remainingCells; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'map-cell';
+                cell.style.background = '#fff';
+                frag.appendChild(cell);
+            }
+            grid.appendChild(frag);
         }
-        $("#map").html(mapHTML);
     }
 
     // Update the country information tables on the left half
@@ -396,6 +468,7 @@
         // 查找同级 label 内的 select 元素的值
         var targetCountry = $(this).siblings("label").find("select").val();
         if (!targetCountry) {
+            updateInventory()
             showPopup("Please select a target country before using the weapon.");
             return;
         }
@@ -418,6 +491,7 @@
             item_id: toolId,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         }, function (data) {
+            updateInventory()
             showPopup(data.message);
             updateGameStatus();
         });
