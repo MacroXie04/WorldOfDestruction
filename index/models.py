@@ -109,6 +109,7 @@ class Turn(models.Model):
     used_tools = models.ManyToManyField(Tools, blank=True)
     used_weapons = models.ManyToManyField(Weapon, blank=True)
     ended = models.BooleanField(default=False)
+    purchases_made = models.IntegerField(default=0)
 
     class Meta:
         unique_together = ('game', 'country', 'round_number')

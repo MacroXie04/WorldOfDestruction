@@ -1,8 +1,48 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-
+from django.urls import reverse
 from index.models import *
+
+
+@login_required(login_url='/login/')
+def api_user_inventory(request, game_id):
+    game = get_object_or_404(Game, id=game_id)
+    try:
+        my_country = game.countries.get(user=request.user)
+    except Country.DoesNotExist:
+        return JsonResponse({'error': 'User has not joined this game.'}, status=400)
+
+    # 查询武器库存，通过循环数量展开为多个条目
+    weapon_entries = []
+    for record in WeaponInventory.objects.filter(country=my_country):
+        for i in range(record.quantity):
+            weapon_entries.append({
+                'id': record.weapon.id,
+                'name': record.weapon.name,
+                'price': record.weapon.price,
+                'population_damage': record.weapon.population_damage,
+                'land_damage': record.weapon.land_damage,
+            })
+
+    # 查询工具库存，并展开为多个条目
+    tool_entries = []
+    for record in ToolInventory.objects.filter(country=my_country):
+        for i in range(record.quantity):
+            tool_entries.append({
+                'id': record.tool.id,
+                'name': record.tool.name,
+                'price': record.tool.price,
+                'population_increase': record.tool.population_increase,
+                'land_increase': record.tool.land_increase,
+            })
+
+    inventory_data = {
+        'weapons': weapon_entries,
+        'tools': tool_entries,
+    }
+
+    return JsonResponse(inventory_data)
 
 
 @login_required(login_url='/login/')
@@ -18,11 +58,14 @@ def api_game_status(request, game_id):
 
     if game.finished:
         game_status = 'finished'
+        redirect_url = reverse('game_detail', kwargs={'game_id': game.id})
     else:
         game_status = 'active'
+        redirect_url = ''
 
     game_data = {
         'game_status': game_status,
+        'redirect_url': redirect_url,
         'game_name': game.name,
         'current_round': game.current_round,
         'active_country': {'id': active_country.id, 'name': active_country.name} if active_country else None,
@@ -59,12 +102,10 @@ def api_game_status(request, game_id):
 
     try:
         turn = Turn.objects.get(game=game, country=my_country, round_number=game.current_round)
-        used_count = turn.used_tools.count() + turn.used_weapons.count()
-        game_data['purchase_remaining'] = game.max_actions_per_turn - used_count
+        game_data['purchase_remaining'] = game.max_actions_per_turn - turn.purchases_made
     except Turn.DoesNotExist:
         game_data['purchase_remaining'] = game.max_actions_per_turn
 
-    # get action logs from the database
     try:
         last_actions_qs = ActionLog.objects.filter(game=game).order_by('-timestamp')[:3]
         last_actions = []
@@ -79,7 +120,6 @@ def api_game_status(request, game_id):
     game_data['last_actions'] = last_actions
 
     return JsonResponse(game_data)
-
 
 @login_required(login_url='/login/')
 def purchase_item(request, game_id):
@@ -116,29 +156,40 @@ def purchase_item(request, game_id):
         round_number=game.current_round
     )
 
-    # check the purchase limit
-    used_count = turn.used_tools.count() + turn.used_weapons.count()
-    if used_count >= game.max_actions_per_turn:
-        return JsonResponse({'error': 'Purchase limit reached'}, status=400)
+    # 使用新增字段 purchases_made 来判断购买次数
+    if turn.purchases_made >= game.max_actions_per_turn:
+        return JsonResponse({'message': 'Purchase limit reached'})
 
     # process weapon purchase
     if item_type == 'weapon':
         try:
             weapon = Weapon.objects.get(pk=item_id)
         except Weapon.DoesNotExist:
-            return JsonResponse({'error': 'Weapon not found.'}, status=404)
+            return JsonResponse({'message': 'Weapon not found.'})
 
         # check the user's money
         if my_country.money < weapon.price:
-            return JsonResponse({'error': 'Not enough money.'}, status=403)
+            return JsonResponse({'message': 'Not enough money.'})
 
         # deduct the money
         my_country.money -= weapon.price
         my_country.save()
 
-        # add the weapon to the turn and country inventory
+        # record purchase action in turn and update inventory using the through model
         turn.used_weapons.add(weapon)
-        my_country.weapons_inventory.add(weapon)
+        inventory, created = WeaponInventory.objects.get_or_create(
+            country=my_country,
+            weapon=weapon,
+            defaults={'quantity': 1}
+        )
+        if not created:
+            inventory.quantity += 1
+            inventory.save()
+
+        # 更新本轮购买计数并保存
+        turn.purchases_made += 1
+        turn.save()
+
         return JsonResponse({'message': f'Weapon {weapon.name} is purchased successfully.'})
 
     # process tool purchase
@@ -157,7 +208,18 @@ def purchase_item(request, game_id):
         my_country.save()
 
         turn.used_tools.add(tool)
-        my_country.tools_inventory.add(tool)
+        inventory, created = ToolInventory.objects.get_or_create(
+            country=my_country,
+            tool=tool,
+            defaults={'quantity': 1}
+        )
+        if not created:
+            inventory.quantity += 1
+            inventory.save()
+
+        turn.purchases_made += 1
+        turn.save()
+
         return JsonResponse({'message': f'Tool {tool.name} is purchased successfully.'})
 
     else:
@@ -178,7 +240,7 @@ def use_item(request, game_id):
 
     active_country = get_active_country(game)
     if active_country is None or my_country.id != active_country.id:
-        return JsonResponse({'error': 'Is not your turn.'}, status=403)
+        return JsonResponse({'message': 'It is not your turn.'})
 
     item_type = request.POST.get('item_type')
     item_id = request.POST.get('item_id')
@@ -193,7 +255,10 @@ def use_item(request, game_id):
             weapon = Weapon.objects.get(pk=item_id)
         except Weapon.DoesNotExist:
             return JsonResponse({'error': 'Weapon not found.'}, status=404)
-        if not my_country.weapons_inventory.filter(pk=item_id).exists():
+        # Check if the user owns at least one unit by querying the through model
+        try:
+            inventory = WeaponInventory.objects.get(country=my_country, weapon=weapon)
+        except WeaponInventory.DoesNotExist:
             return JsonResponse({'error': 'You do not own this weapon.'}, status=403)
 
         target_country_id = request.POST.get('target_country')
@@ -204,22 +269,42 @@ def use_item(request, game_id):
         except Country.DoesNotExist:
             return JsonResponse({'error': 'Target country not found.'}, status=404)
 
-        # 应用武器伤害，减少目标国家的人口和土地（不小于0）
-        # TODO: 检查目标国家是否在同一游戏中
-        # TODO: 检查目标国家是否已被消灭（人口或土地为0）消灭则游戏结束
+        # Apply weapon damage (ensure population and land do not go negative)
         target_country.population = max(0, target_country.population - weapon.population_damage)
         target_country.land = max(0, target_country.land - weapon.land_damage)
         target_country.save()
 
-        # 记录武器使用到 Turn，并从库存中移除该武器（视为消耗品）
-        turn.used_weapons.add(weapon)
-        my_country.weapons_inventory.remove(weapon)
+        # 检测目标国家是否被消灭（人口或土地降至0），若是则自动结束游戏
+        if target_country.population == 0 or target_country.land == 0:
+            game.finished = True
+            game.can_join = False
+            game.save()
+            # 记录游戏结束的日志
+            ActionLog.objects.create(
+                game=game,
+                country=target_country,
+                action=(f"{target_country.name} has been eliminated "
+                        f"by {my_country.name}'s weapon '{weapon.name}'. Game over.")
+            )
+            return JsonResponse({'message': f'Weapon {weapon.name} used on {target_country.name}. ' +
+                                             f"{target_country.name} has been eliminated. Game over."})
 
-        # 创建 ActionLog 记录武器使用情况
+        # Record weapon usage in the current turn
+        turn.used_weapons.add(weapon)
+
+        # Consume only one unit: decrease quantity if more than one, or remove record if only one left
+        if inventory.quantity > 1:
+            inventory.quantity -= 1
+            inventory.save()
+        else:
+            inventory.delete()
+
+        # Create a detailed ActionLog record in English
         ActionLog.objects.create(
             game=game,
             country=my_country,
-            action=f"使用武器 {weapon.name} 对 {target_country.name} 造成伤害。"
+            action=(f"{my_country.name} attacked {target_country.name} using weapon '{weapon.name}', "
+                    f"causing {weapon.population_damage} population damage and {weapon.land_damage} land damage.")
         )
 
         return JsonResponse({'message': f'Weapon {weapon.name} used on {target_country.name}.'})
@@ -229,30 +314,38 @@ def use_item(request, game_id):
             tool = Tools.objects.get(pk=item_id)
         except Tools.DoesNotExist:
             return JsonResponse({'error': 'Tool not found.'}, status=404)
-        if not my_country.tools_inventory.filter(pk=item_id).exists():
+        try:
+            inventory = ToolInventory.objects.get(country=my_country, tool=tool)
+        except ToolInventory.DoesNotExist:
             return JsonResponse({'error': 'You do not own this tool.'}, status=403)
 
-        # 使用道具对自己国家进行补充（增加人口和土地）
+        # Reinforce own country: increase population and land
         my_country.population += tool.population_increase
         my_country.land += tool.land_increase
         my_country.save()
 
-        # 记录工具使用到 Turn，并从库存中移除该工具
+        # Record tool usage in the current turn
         turn.used_tools.add(tool)
-        my_country.tools_inventory.remove(tool)
 
-        # 创建 ActionLog 记录工具使用情况
+        # Consume only one unit from the inventory
+        if inventory.quantity > 1:
+            inventory.quantity -= 1
+            inventory.save()
+        else:
+            inventory.delete()
+
+        # Create a detailed ActionLog record in English
         ActionLog.objects.create(
             game=game,
             country=my_country,
-            action=f"{my_country.name} 使用道具 {tool.name} 强化国家（增加人口 {tool.population_increase}，增加土地 {tool.land_increase}）。"
+            action=(f"{my_country.name} used tool '{tool.name}' to reinforce itself, "
+                    f"increasing population by {tool.population_increase} and land by {tool.land_increase}.")
         )
 
         return JsonResponse({'message': f'Tool {tool.name} used. Your country has been reinforced.'})
 
     else:
         return JsonResponse({'error': 'Invalid item type.'}, status=400)
-
 
 @login_required(login_url='/login/')
 def end_turn(request, game_id):
@@ -269,7 +362,7 @@ def end_turn(request, game_id):
     # 检查当前是否轮到该玩家操作
     active_country = get_active_country(game)
     if active_country is None or my_country.id != active_country.id:
-        return JsonResponse({'error': '现在不是您的回合，无法结束回合。'}, status=403)
+        return JsonResponse({'message': 'you can not end turn.'})
 
     # 获取或创建当前轮的 Turn 记录，并标记其为结束
     turn, created = Turn.objects.get_or_create(game=game, country=my_country, round_number=game.current_round)
